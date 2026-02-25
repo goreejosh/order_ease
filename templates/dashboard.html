@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% set active_page = "dashboard" %}
+{% block title %}Dashboard - OrderEase Manager{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+  <div class="mb-8">
+    <h1 class="text-2xl font-bold text-gray-900">Dashboard</h1>
+    <p class="mt-1 text-sm text-gray-500">Product catalog overview</p>
+  </div>
+
+  <!-- Stat cards -->
+  <div class="grid grid-cols-1 gap-5 sm:grid-cols-3 mb-10">
+    <div class="bg-white overflow-hidden rounded-xl border border-gray-200 px-6 py-5">
+      <dt class="truncate text-sm font-medium text-gray-500">Total Products</dt>
+      <dd class="mt-1 text-3xl font-bold tracking-tight text-gray-900">{{ stats.total }}</dd>
+    </div>
+    <div class="bg-white overflow-hidden rounded-xl border border-gray-200 px-6 py-5">
+      <dt class="truncate text-sm font-medium text-gray-500">Priced</dt>
+      <dd class="mt-1 text-3xl font-bold tracking-tight text-brand-600">{{ stats.priced }}</dd>
+    </div>
+    <div class="bg-white overflow-hidden rounded-xl border border-gray-200 px-6 py-5">
+      <dt class="truncate text-sm font-medium text-gray-500">Unpriced</dt>
+      <dd class="mt-1 text-3xl font-bold tracking-tight {% if stats.unpriced > 0 %}text-amber-600{% else %}text-gray-400{% endif %}">{{ stats.unpriced }}</dd>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+    <!-- By Size -->
+    <div class="bg-white rounded-xl border border-gray-200 p-6">
+      <h2 class="text-base font-semibold text-gray-900 mb-4">Products by Size</h2>
+      <div class="space-y-3">
+        {% for size_name, count in stats.sizes.items() %}
+        <div class="flex items-center justify-between">
+          <span class="text-sm text-gray-700">{{ size_name }}</span>
+          <div class="flex items-center gap-3">
+            <div class="w-32 bg-gray-100 rounded-full h-2">
+              <div class="bg-brand-500 h-2 rounded-full" style="width: {{ (count / stats.total * 100)|round }}%"></div>
+            </div>
+            <span class="text-sm font-medium text-gray-900 w-10 text-right">{{ count }}</span>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- By Group -->
+    <div class="bg-white rounded-xl border border-gray-200 p-6">
+      <h2 class="text-base font-semibold text-gray-900 mb-4">Products by Group</h2>
+      <div class="space-y-3 max-h-80 overflow-y-auto">
+        {% for group_name, count in stats.groups.items() %}
+        <div class="flex items-center justify-between">
+          <a href="/products?group={{ group_name|urlencode }}" class="text-sm text-brand-700 hover:underline">{{ group_name }}</a>
+          <span class="text-sm font-medium text-gray-900">{{ count }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick actions -->
+  <div class="mt-10 flex gap-4">
+    <a href="/products" class="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-700 transition">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
+      Browse Products
+    </a>
+    <a href="/pricing" class="inline-flex items-center gap-2 rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-gray-900 shadow-sm border border-gray-300 hover:bg-gray-50 transition">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"/></svg>
+      Bulk Price Update
+    </a>
+  </div>
+</div>
+{% endblock %}
