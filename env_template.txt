@@ -1,0 +1,23 @@
+# OrderEase API Configuration
+# Copy this content to a new file named .env and fill in your actual values
+
+# OrderEase v2 credentials (as provided by OrderEase)
+V2_API_Key=your_v2_api_key_here
+ClientKey=your_client_key_here
+ClientSecret=your_client_secret_here
+
+# Your OrderEase API base URL (without trailing slash)
+ORDEREASE_BASE_URL=https://api.orderease.com
+
+# Optional (legacy/override): Explicit X-Integration-Key value (if different from V2_API_Key)
+# ORDEREASE_INTEGRATION_KEY=your_integration_key_here
+
+# Optional: Explicit Bearer token (if OrderEase instructs you to use Authorization: Bearer)
+# ORDEREASE_BEARER_TOKEN=your_bearer_token_here
+
+# Your Supplier ID (optional - can be entered in the interactive menu)
+ORDEREASE_SUPPLIER_ID=your_supplier_id_here
+
+# Optional: Company ID
+ORDEREASE_COMPANY_ID=your_company_id_here
+

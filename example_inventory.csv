@@ -1,0 +1,12 @@
+sku,description,quantity,price,category
+ITEM-001,"Premium Widget - Blue",100,29.99,Widgets
+ITEM-002,"Premium Widget - Red",150,29.99,Widgets
+ITEM-003,"Deluxe Gadget - Small",75,49.99,Gadgets
+ITEM-004,"Deluxe Gadget - Medium",50,59.99,Gadgets
+ITEM-005,"Deluxe Gadget - Large",25,69.99,Gadgets
+ITEM-006,"Standard Doohickey",200,19.99,Doohickeys
+ITEM-007,"Professional Tool Set",30,149.99,Tools
+ITEM-008,"Basic Accessory Kit",175,24.99,Accessories
+ITEM-009,"Advanced Component",40,89.99,Components
+ITEM-010,"Economy Package",300,14.99,Packages
+
