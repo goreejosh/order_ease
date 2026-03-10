@@ -1,29 +1,22 @@
 """
-OrderEase Catalog Manager - Web UI
+OrderEase Catalog Manager - API
 
-A FastAPI web application for managing the OrderEase product catalog.
-Provides product browsing, search, inline price editing, and bulk CSV pricing.
+Backend API for the OrderEase product catalog manager.
+Frontend is hosted separately on Amplify.
 """
 
 import os
-import io
-import re
-import csv
 import json
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
-from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
 from dotenv import load_dotenv
 
 from orderease_inventory_manager import (
     OrderEaseAPI,
     OrderEaseAPIError,
-    _clean_str,
     _chunked,
 )
 from update_costs import (
@@ -31,8 +24,6 @@ from update_costs import (
     parse_description,
     find_csv_match,
     map_size,
-    normalize_name,
-    SIZE_COLUMNS,
 )
 
 load_dotenv()
@@ -78,10 +69,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.mount("/static", StaticFiles(directory="static"), name="static")
-templates = Jinja2Templates(directory="templates")
-
-
 def _product_stats(products: List[Dict]) -> Dict[str, Any]:
     total = len(products)
     priced = sum(1 for p in products if float(p.get("CatalogPrice", 0) or 0) > 0)
@@ -103,67 +90,7 @@ def _product_stats(products: List[Dict]) -> Dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
-# Page routes
-# ---------------------------------------------------------------------------
-
-@app.get("/", response_class=HTMLResponse)
-async def dashboard(request: Request):
-    api = get_api()
-    try:
-        raw = api._make_request("GET", "/api/SupplierInventory/GetAllSimple", unwrap_operation_result=True)
-        plants = [p for p in (raw or []) if p.get("Category", {}).get("Name") == "Plants"]
-    except OrderEaseAPIError as e:
-        plants = []
-    stats = _product_stats(plants)
-    return templates.TemplateResponse("dashboard.html", {"request": request, "stats": stats})
-
-
-@app.get("/products", response_class=HTMLResponse)
-async def products_page(request: Request, q: str = "", group: str = "", size: str = "", pricing: str = ""):
-    api = get_api()
-    try:
-        raw = api._make_request("GET", "/api/SupplierInventory/GetAllSimple", unwrap_operation_result=True)
-        plants = [p for p in (raw or []) if p.get("Category", {}).get("Name") == "Plants"]
-    except OrderEaseAPIError:
-        plants = []
-
-    all_groups = sorted(set(p.get("Comments") or "Uncategorized" for p in plants))
-    all_sizes = sorted(set(p.get("OpenSizeDescription") or "Unknown" for p in plants))
-
-    filtered = plants
-    if q:
-        ql = q.lower()
-        filtered = [p for p in filtered if ql in (p.get("Description") or "").lower() or ql in (p.get("SupplierSKU") or "").lower()]
-    if group:
-        filtered = [p for p in filtered if (p.get("Comments") or "Uncategorized") == group]
-    if size:
-        filtered = [p for p in filtered if (p.get("OpenSizeDescription") or "Unknown") == size]
-    if pricing == "priced":
-        filtered = [p for p in filtered if float(p.get("CatalogPrice", 0) or 0) > 0]
-    elif pricing == "unpriced":
-        filtered = [p for p in filtered if float(p.get("CatalogPrice", 0) or 0) <= 0]
-
-    return templates.TemplateResponse("products.html", {
-        "request": request,
-        "products": filtered,
-        "products_json": json.dumps(filtered, default=str),
-        "total": len(plants),
-        "q": q,
-        "group": group,
-        "size": size,
-        "pricing": pricing,
-        "all_groups": all_groups,
-        "all_sizes": all_sizes,
-    })
-
-
-@app.get("/pricing", response_class=HTMLResponse)
-async def pricing_page(request: Request):
-    return templates.TemplateResponse("pricing.html", {"request": request, "results": None})
-
-
-# ---------------------------------------------------------------------------
-# JSON data endpoints (consumed by the Amplify frontend)
+# API endpoints
 # ---------------------------------------------------------------------------
 
 def _fetch_plants() -> List[Dict]:
@@ -211,10 +138,6 @@ async def api_products(q: str = "", group: str = "", size: str = "", pricing: st
         "allSizes": all_sizes,
     }
 
-
-# ---------------------------------------------------------------------------
-# Mutation API routes
-# ---------------------------------------------------------------------------
 
 @app.post("/api/update-price")
 async def update_single_price(request: Request):
