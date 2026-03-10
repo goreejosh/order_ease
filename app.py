@@ -14,6 +14,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request, UploadFile, File, Form, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -67,6 +68,16 @@ async def lifespan(app: FastAPI):
     yield
 
 app = FastAPI(title="OrderEase Catalog Manager", lifespan=lifespan)
+
+allowed_origins = os.getenv("ALLOWED_ORIGINS", "*").split(",")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allowed_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
@@ -152,7 +163,57 @@ async def pricing_page(request: Request):
 
 
 # ---------------------------------------------------------------------------
-# API routes
+# JSON data endpoints (consumed by the Amplify frontend)
+# ---------------------------------------------------------------------------
+
+def _fetch_plants() -> List[Dict]:
+    api = get_api()
+    raw = api._make_request("GET", "/api/SupplierInventory/GetAllSimple", unwrap_operation_result=True)
+    return [p for p in (raw or []) if p.get("Category", {}).get("Name") == "Plants"]
+
+
+@app.get("/api/stats")
+async def api_stats():
+    try:
+        plants = _fetch_plants()
+    except OrderEaseAPIError:
+        plants = []
+    return _product_stats(plants)
+
+
+@app.get("/api/products")
+async def api_products(q: str = "", group: str = "", size: str = "", pricing: str = ""):
+    try:
+        plants = _fetch_plants()
+    except OrderEaseAPIError:
+        plants = []
+
+    all_groups = sorted(set(p.get("Comments") or "Uncategorized" for p in plants))
+    all_sizes = sorted(set(p.get("OpenSizeDescription") or "Unknown" for p in plants))
+
+    filtered = plants
+    if q:
+        ql = q.lower()
+        filtered = [p for p in filtered if ql in (p.get("Description") or "").lower() or ql in (p.get("SupplierSKU") or "").lower()]
+    if group:
+        filtered = [p for p in filtered if (p.get("Comments") or "Uncategorized") == group]
+    if size:
+        filtered = [p for p in filtered if (p.get("OpenSizeDescription") or "Unknown") == size]
+    if pricing == "priced":
+        filtered = [p for p in filtered if float(p.get("CatalogPrice", 0) or 0) > 0]
+    elif pricing == "unpriced":
+        filtered = [p for p in filtered if float(p.get("CatalogPrice", 0) or 0) <= 0]
+
+    return {
+        "products": filtered,
+        "total": len(plants),
+        "allGroups": all_groups,
+        "allSizes": all_sizes,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Mutation API routes
 # ---------------------------------------------------------------------------
 
 @app.post("/api/update-price")

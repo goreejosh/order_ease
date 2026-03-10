@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-gray-50">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Products - OrderEase Manager</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: { 50:'#f0fdf4', 100:'#dcfce7', 200:'#bbf7d0', 500:'#22c55e', 600:'#16a34a', 700:'#15803d', 800:'#166534' }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    [x-cloak] { display: none !important; }
+    .fade-in { animation: fadeIn 0.2s ease-in; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+    .spinner { border: 3px solid #e5e7eb; border-top-color: #22c55e; border-radius: 50%; width: 20px; height: 20px; animation: spin 0.6s linear infinite; display: inline-block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+  <script src="config.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</head>
+<body class="h-full">
+  <div class="min-h-full">
+    <!-- Nav -->
+    <nav class="bg-white border-b border-gray-200">
+      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div class="flex h-16 items-center justify-between">
+          <div class="flex items-center gap-2">
+            <div class="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center">
+              <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+            </div>
+            <span class="text-lg font-bold text-gray-900">OrderEase Manager</span>
+          </div>
+          <div class="flex gap-1">
+            <a href="/" class="px-3 py-2 rounded-md text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900">Dashboard</a>
+            <a href="/products.html" class="px-3 py-2 rounded-md text-sm font-medium bg-brand-50 text-brand-700">Products</a>
+            <a href="/pricing.html" class="px-3 py-2 rounded-md text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900">Bulk Pricing</a>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Content -->
+    <main class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+      <div x-data="productManager()" x-init="loadProducts()" class="fade-in">
+        <div class="sm:flex sm:items-center sm:justify-between mb-6">
+          <div>
+            <h1 class="text-2xl font-bold text-gray-900">Products</h1>
+            <p class="mt-1 text-sm text-gray-500"><span x-text="products.length"></span> of <span x-text="totalCount"></span> products</p>
+          </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="bg-white rounded-xl border border-gray-200 p-4 mb-6">
+          <div class="grid grid-cols-1 sm:grid-cols-5 gap-3">
+            <div class="sm:col-span-2">
+              <input type="text" x-model="filters.q" placeholder="Search by name or SKU..."
+                     @keydown.enter="loadProducts()"
+                     class="block w-full rounded-lg border-gray-300 shadow-sm text-sm px-3 py-2 border focus:border-brand-500 focus:ring-brand-500">
+            </div>
+            <div>
+              <select x-model="filters.group" class="block w-full rounded-lg border-gray-300 shadow-sm text-sm px-3 py-2 border focus:border-brand-500 focus:ring-brand-500">
+                <option value="">All Groups</option>
+                <template x-for="g in allGroups" :key="g">
+                  <option :value="g" x-text="g"></option>
+                </template>
+              </select>
+            </div>
+            <div>
+              <select x-model="filters.size" class="block w-full rounded-lg border-gray-300 shadow-sm text-sm px-3 py-2 border focus:border-brand-500 focus:ring-brand-500">
+                <option value="">All Sizes</option>
+                <template x-for="s in allSizes" :key="s">
+                  <option :value="s" x-text="s"></option>
+                </template>
+              </select>
+            </div>
+            <div class="flex gap-2">
+              <select x-model="filters.pricing" class="block w-full rounded-lg border-gray-300 shadow-sm text-sm px-3 py-2 border focus:border-brand-500 focus:ring-brand-500">
+                <option value="">All Pricing</option>
+                <option value="priced">Priced</option>
+                <option value="unpriced">Unpriced</option>
+              </select>
+              <button @click="loadProducts()" class="shrink-0 inline-flex items-center rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition">
+                Filter
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Loading -->
+        <div x-show="loading" class="flex items-center justify-center py-20">
+          <div class="text-center">
+            <span class="spinner"></span>
+            <p class="mt-3 text-sm text-gray-500">Loading products...</p>
+          </div>
+        </div>
+
+        <!-- Toast notification -->
+        <div x-show="toast" x-transition x-cloak
+             class="fixed top-4 right-4 z-50 flex items-center gap-2 rounded-lg px-4 py-3 text-sm font-medium shadow-lg"
+             :class="toastType === 'success' ? 'bg-brand-600 text-white' : 'bg-red-600 text-white'">
+          <span x-text="toast"></span>
+        </div>
+
+        <!-- Table -->
+        <div x-show="!loading" x-cloak class="bg-white rounded-xl border border-gray-200 overflow-hidden" :class="selectedCount > 0 ? 'mb-24' : ''">
+          <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="px-3 py-3 w-10">
+                    <input type="checkbox" @change="toggleAll($event.target.checked)"
+                           :checked="selectedCount > 0 && selectedCount === products.length"
+                           :indeterminate="selectedCount > 0 && selectedCount < products.length"
+                           class="rounded border-gray-300 text-brand-600 focus:ring-brand-500">
+                  </th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">SKU</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Product</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Group</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Size</th>
+                  <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Current</th>
+                  <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider"
+                      x-show="previewing" x-cloak>New</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Qty</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-100">
+                <template x-for="p in products" :key="p.itemId">
+                  <tr class="hover:bg-gray-50 transition" :class="p.selected ? 'bg-brand-50/50' : ''">
+                    <td class="px-3 py-3">
+                      <input type="checkbox" x-model="p.selected" @change="countSelected()"
+                             class="rounded border-gray-300 text-brand-600 focus:ring-brand-500">
+                    </td>
+                    <td class="px-4 py-3 text-sm font-mono text-gray-700 whitespace-nowrap" x-text="p.sku"></td>
+                    <td class="px-4 py-3">
+                      <div class="text-sm font-medium text-gray-900 max-w-xs truncate" x-text="p.description" :title="p.description"></div>
+                    </td>
+                    <td class="px-4 py-3 text-sm text-gray-600" x-text="p.group || '\u2014'"></td>
+                    <td class="px-4 py-3">
+                      <span class="inline-flex items-center rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-700" x-text="p.size || '\u2014'"></span>
+                    </td>
+                    <td class="px-4 py-3 text-right whitespace-nowrap">
+                      <div x-show="!p._editing">
+                        <button @click="p._editing = true; p._editPrice = p.price"
+                                class="text-sm font-medium tabular-nums hover:text-brand-600 transition cursor-pointer"
+                                :class="p.price > 0 ? 'text-gray-900' : 'text-amber-600'"
+                                x-text="'$' + p.price.toFixed(2)">
+                        </button>
+                      </div>
+                      <div x-show="p._editing" x-cloak class="flex items-center justify-end gap-1">
+                        <span class="text-sm text-gray-400">$</span>
+                        <input type="number" step="0.01" min="0" x-model.number="p._editPrice"
+                               @keydown.enter="saveInline(p)" @keydown.escape="p._editing = false"
+                               class="w-20 rounded border-gray-300 text-sm text-right px-2 py-1 border focus:border-brand-500 focus:ring-brand-500">
+                        <button @click="saveInline(p)" class="p-1 text-brand-600 hover:text-brand-800" :disabled="p._saving">
+                          <span x-show="!p._saving"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg></span>
+                          <span x-show="p._saving" class="spinner"></span>
+                        </button>
+                        <button @click="p._editing = false" class="p-1 text-gray-400 hover:text-gray-600">
+                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                      </div>
+                    </td>
+                    <td class="px-4 py-3 text-right whitespace-nowrap" x-show="previewing" x-cloak>
+                      <template x-if="p.selected && p._newPrice !== null">
+                        <span class="text-sm font-semibold tabular-nums"
+                              :class="p._newPrice > p.price ? 'text-brand-700' : p._newPrice < p.price ? 'text-red-600' : 'text-gray-400'"
+                              x-text="'$' + p._newPrice.toFixed(2)">
+                        </span>
+                      </template>
+                      <template x-if="!p.selected || p._newPrice === null">
+                        <span class="text-sm text-gray-300">&mdash;</span>
+                      </template>
+                    </td>
+                    <td class="px-4 py-3 text-sm text-gray-600" x-text="p.qty"></td>
+                  </tr>
+                </template>
+                <template x-if="products.length === 0 && !loading">
+                  <tr>
+                    <td colspan="8" class="px-4 py-12 text-center text-sm text-gray-500">No products found matching your filters.</td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Bulk action bar -->
+        <div x-show="selectedCount > 0" x-transition x-cloak
+             class="fixed bottom-0 inset-x-0 z-40 bg-white border-t border-gray-200 shadow-lg">
+          <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-3">
+            <div class="flex flex-wrap items-center gap-3">
+              <div class="flex items-center gap-2 mr-2">
+                <span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-brand-600 text-white text-xs font-bold" x-text="selectedCount"></span>
+                <span class="text-sm font-medium text-gray-700">selected</span>
+              </div>
+              <div class="h-6 w-px bg-gray-200"></div>
+              <div class="inline-flex rounded-lg border border-gray-300 overflow-hidden">
+                <button @click="bulkMode = 'percentage'" type="button"
+                        class="px-3 py-1.5 text-xs font-semibold transition"
+                        :class="bulkMode === 'percentage' ? 'bg-brand-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'">%</button>
+                <button @click="bulkMode = 'fixed'" type="button"
+                        class="px-3 py-1.5 text-xs font-semibold transition border-l border-gray-300"
+                        :class="bulkMode === 'fixed' ? 'bg-brand-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'">$</button>
+              </div>
+              <div class="inline-flex rounded-lg border border-gray-300 overflow-hidden">
+                <button @click="bulkDirection = 'increase'" type="button"
+                        class="px-3 py-1.5 text-xs font-semibold transition"
+                        :class="bulkDirection === 'increase' ? 'bg-brand-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'">Increase</button>
+                <button @click="bulkDirection = 'decrease'" type="button"
+                        class="px-3 py-1.5 text-xs font-semibold transition border-l border-gray-300"
+                        :class="bulkDirection === 'decrease' ? 'bg-red-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'">Decrease</button>
+              </div>
+              <div class="flex items-center gap-1">
+                <span class="text-sm text-gray-500" x-text="bulkMode === 'fixed' ? '$' : ''"></span>
+                <input type="number" step="any" min="0" x-model.number="bulkAmount"
+                       class="w-24 rounded-lg border-gray-300 text-sm px-3 py-1.5 border focus:border-brand-500 focus:ring-brand-500"
+                       :placeholder="bulkMode === 'percentage' ? '10' : '1.00'">
+                <span class="text-sm text-gray-500" x-text="bulkMode === 'percentage' ? '%' : ''"></span>
+              </div>
+              <button @click="previewBulk()" type="button"
+                      class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                Preview
+              </button>
+              <div class="flex-1"></div>
+              <button x-show="previewing" @click="cancelPreview()" type="button"
+                      class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-50 transition">Cancel</button>
+              <button @click="applyBulk()" type="button" :disabled="!previewing || applying"
+                      class="inline-flex items-center gap-1.5 rounded-lg px-4 py-1.5 text-sm font-semibold text-white shadow-sm transition"
+                      :class="previewing ? 'bg-brand-600 hover:bg-brand-700' : 'bg-gray-300 cursor-not-allowed'">
+                <span x-show="!applying"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg></span>
+                <span x-show="applying" class="spinner"></span>
+                Apply
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Error -->
+        <div x-show="error" x-cloak class="rounded-lg bg-red-50 border border-red-200 p-4 mt-4">
+          <p class="text-sm text-red-700" x-text="error"></p>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+  function productManager() {
+    return {
+      products: [],
+      totalCount: 0,
+      allGroups: [],
+      allSizes: [],
+      loading: true,
+      error: '',
+      filters: { q: '', group: '', size: '', pricing: '' },
+      selectedCount: 0,
+      bulkMode: 'percentage',
+      bulkDirection: 'increase',
+      bulkAmount: 10,
+      previewing: false,
+      applying: false,
+      toast: '',
+      toastType: 'success',
+
+      init() {
+        const params = new URLSearchParams(window.location.search);
+        this.filters.q = params.get('q') || '';
+        this.filters.group = params.get('group') || '';
+        this.filters.size = params.get('size') || '';
+        this.filters.pricing = params.get('pricing') || '';
+      },
+
+      showToast(msg, type = 'success') {
+        this.toast = msg;
+        this.toastType = type;
+        setTimeout(() => this.toast = '', 3000);
+      },
+
+      async loadProducts() {
+        this.loading = true;
+        this.error = '';
+        try {
+          const params = new URLSearchParams();
+          if (this.filters.q) params.set('q', this.filters.q);
+          if (this.filters.group) params.set('group', this.filters.group);
+          if (this.filters.size) params.set('size', this.filters.size);
+          if (this.filters.pricing) params.set('pricing', this.filters.pricing);
+          const qs = params.toString();
+          const res = await fetch(API_BASE + '/api/products' + (qs ? '?' + qs : ''));
+          if (!res.ok) throw new Error('Failed to load products');
+          const data = await res.json();
+          this.totalCount = data.total;
+          this.allGroups = data.allGroups;
+          this.allSizes = data.allSizes;
+          this.products = data.products.map(p => ({
+            itemId: p.ItemId,
+            sku: p.SupplierSKU || '',
+            description: p.Description || '',
+            group: p.Comments || '',
+            size: p.OpenSizeDescription || '',
+            price: parseFloat(p.CatalogPrice || 0),
+            qty: p.Inventory || 0,
+            selected: false,
+            _editing: false,
+            _editPrice: parseFloat(p.CatalogPrice || 0),
+            _saving: false,
+            _newPrice: null,
+          }));
+          this.selectedCount = 0;
+          this.previewing = false;
+        } catch (e) {
+          this.error = e.message;
+        } finally {
+          this.loading = false;
+        }
+      },
+
+      countSelected() {
+        this.selectedCount = this.products.filter(p => p.selected).length;
+        if (this.previewing) this.previewBulk();
+      },
+      toggleAll(checked) {
+        this.products.forEach(p => p.selected = checked);
+        this.countSelected();
+      },
+      previewBulk() {
+        const amt = parseFloat(this.bulkAmount) || 0;
+        if (amt === 0) { this.showToast('Enter an amount first', 'error'); return; }
+        this.previewing = true;
+        this.products.forEach(p => {
+          if (!p.selected) { p._newPrice = null; return; }
+          let np;
+          if (this.bulkMode === 'percentage') {
+            const multiplier = this.bulkDirection === 'increase' ? (1 + amt / 100) : (1 - amt / 100);
+            np = p.price * multiplier;
+          } else {
+            np = this.bulkDirection === 'increase' ? p.price + amt : p.price - amt;
+          }
+          p._newPrice = Math.max(0, Math.round(np * 100) / 100);
+        });
+      },
+      cancelPreview() {
+        this.previewing = false;
+        this.products.forEach(p => p._newPrice = null);
+      },
+      async applyBulk() {
+        const toUpdate = this.products.filter(p => p.selected && p._newPrice !== null && Math.abs(p._newPrice - p.price) > 0.001);
+        if (toUpdate.length === 0) { this.showToast('No price changes to apply', 'error'); return; }
+        this.applying = true;
+        try {
+          const updates = toUpdate.map(p => ({ itemId: p.itemId, netPrice: p._newPrice }));
+          const res = await fetch(API_BASE + '/api/bulk-update-prices', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ updates })
+          });
+          if (!res.ok) throw new Error(await res.text());
+          const data = await res.json();
+          toUpdate.forEach(p => { p.price = p._newPrice; p._editPrice = p._newPrice; });
+          this.cancelPreview();
+          this.products.forEach(p => p.selected = false);
+          this.selectedCount = 0;
+          this.showToast(`Updated ${data.updated} prices` + (data.failed ? `, ${data.failed} failed` : ''));
+        } catch (e) {
+          this.showToast('Update failed: ' + e.message, 'error');
+        } finally {
+          this.applying = false;
+        }
+      },
+      async saveInline(p) {
+        p._saving = true;
+        try {
+          const res = await fetch(API_BASE + '/api/update-price', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ itemId: p.itemId, netPrice: parseFloat(p._editPrice) })
+          });
+          if (!res.ok) throw new Error('Failed');
+          p.price = parseFloat(p._editPrice);
+          p._editing = false;
+          this.showToast('Price updated');
+        } catch {
+          this.showToast('Failed to update', 'error');
+        } finally {
+          p._saving = false;
+        }
+      },
+    };
+  }
+  </script>
+</body>
+</html>

@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-gray-50">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bulk Pricing - OrderEase Manager</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: { 50:'#f0fdf4', 100:'#dcfce7', 200:'#bbf7d0', 500:'#22c55e', 600:'#16a34a', 700:'#15803d', 800:'#166534' }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    [x-cloak] { display: none !important; }
+    .fade-in { animation: fadeIn 0.2s ease-in; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+    .spinner { border: 3px solid #e5e7eb; border-top-color: #22c55e; border-radius: 50%; width: 20px; height: 20px; animation: spin 0.6s linear infinite; display: inline-block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+  <script src="config.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</head>
+<body class="h-full">
+  <div class="min-h-full">
+    <!-- Nav -->
+    <nav class="bg-white border-b border-gray-200">
+      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div class="flex h-16 items-center justify-between">
+          <div class="flex items-center gap-2">
+            <div class="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center">
+              <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+            </div>
+            <span class="text-lg font-bold text-gray-900">OrderEase Manager</span>
+          </div>
+          <div class="flex gap-1">
+            <a href="/" class="px-3 py-2 rounded-md text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900">Dashboard</a>
+            <a href="/products.html" class="px-3 py-2 rounded-md text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900">Products</a>
+            <a href="/pricing.html" class="px-3 py-2 rounded-md text-sm font-medium bg-brand-50 text-brand-700">Bulk Pricing</a>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Content -->
+    <main class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+      <div x-data="pricingManager()" class="fade-in">
+        <div class="mb-6">
+          <h1 class="text-2xl font-bold text-gray-900">Bulk Price Update</h1>
+          <p class="mt-1 text-sm text-gray-500">Upload a pricing CSV to preview and apply cost changes across your catalog</p>
+        </div>
+
+        <!-- Toast -->
+        <div x-show="toast" x-transition x-cloak
+             class="fixed top-4 right-4 z-50 flex items-center gap-2 rounded-lg px-4 py-3 text-sm font-medium shadow-lg"
+             :class="toastType === 'success' ? 'bg-brand-600 text-white' : 'bg-red-600 text-white'">
+          <span x-text="toast"></span>
+        </div>
+
+        <!-- Upload card -->
+        <div class="bg-white rounded-xl border border-gray-200 p-6 mb-8">
+          <div class="flex flex-col sm:flex-row sm:items-end gap-4">
+            <div class="flex-1">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Pricing CSV</label>
+              <div class="flex items-center gap-3">
+                <label class="cursor-pointer inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 transition">
+                  <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+                  <span x-text="fileName || 'Choose file'"></span>
+                  <input type="file" accept=".csv" class="hidden" @change="handleFile($event)">
+                </label>
+              </div>
+              <p class="mt-1.5 text-xs text-gray-500">Expected format: Plant Name, 1g, 3g, full, 7g, 15g, (blank), markup cols...</p>
+            </div>
+            <div class="flex items-center gap-4">
+              <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                <input type="checkbox" x-model="useMarkup" class="rounded border-gray-300 text-brand-600 focus:ring-brand-500">
+                Use markup prices
+              </label>
+              <button @click="uploadCSV()"
+                      :disabled="!file || uploading"
+                      class="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed transition">
+                <template x-if="!uploading">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                </template>
+                <template x-if="uploading"><span class="spinner"></span></template>
+                Preview Changes
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Results -->
+        <template x-if="results">
+          <div class="fade-in">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+              <div class="bg-white rounded-xl border border-gray-200 px-5 py-4">
+                <div class="text-sm text-gray-500">Matched</div>
+                <div class="text-2xl font-bold text-gray-900" x-text="results.totalMatched"></div>
+              </div>
+              <div class="bg-white rounded-xl border border-gray-200 px-5 py-4">
+                <div class="text-sm text-gray-500">Price Changes</div>
+                <div class="text-2xl font-bold text-brand-600" x-text="results.totalChanged"></div>
+              </div>
+              <div class="bg-white rounded-xl border border-gray-200 px-5 py-4">
+                <div class="text-sm text-gray-500">Unmatched</div>
+                <div class="text-2xl font-bold text-amber-600" x-text="results.unmatched"></div>
+              </div>
+            </div>
+
+            <div class="bg-white rounded-xl border border-gray-200 overflow-hidden" x-show="results.matches.length > 0">
+              <div class="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
+                <h2 class="text-base font-semibold text-gray-900">
+                  Price Changes (<span x-text="results.matches.length"></span>)
+                </h2>
+                <button @click="applyAll()"
+                        :disabled="applying"
+                        class="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-brand-700 disabled:opacity-50 transition">
+                  <template x-if="!applying">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                  </template>
+                  <template x-if="applying"><span class="spinner"></span></template>
+                  Apply All Changes
+                </button>
+              </div>
+              <div class="overflow-x-auto max-h-[600px] overflow-y-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                  <thead class="bg-gray-50 sticky top-0">
+                    <tr>
+                      <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">SKU</th>
+                      <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Product</th>
+                      <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">CSV Match</th>
+                      <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Size</th>
+                      <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Old Price</th>
+                      <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">New Price</th>
+                      <th class="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase">Match</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-gray-100">
+                    <template x-for="m in results.matches" :key="m.itemId">
+                      <tr class="hover:bg-gray-50 transition">
+                        <td class="px-4 py-2.5 text-sm font-mono text-gray-700" x-text="m.sku"></td>
+                        <td class="px-4 py-2.5 text-sm text-gray-900" x-text="m.variety"></td>
+                        <td class="px-4 py-2.5 text-sm text-gray-500 max-w-[200px] truncate" x-text="m.csvName" :title="m.csvName"></td>
+                        <td class="px-4 py-2.5">
+                          <span class="inline-flex items-center rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700" x-text="m.size"></span>
+                        </td>
+                        <td class="px-4 py-2.5 text-sm text-right text-gray-500 tabular-nums" x-text="'$' + m.oldPrice.toFixed(2)"></td>
+                        <td class="px-4 py-2.5 text-sm text-right font-semibold tabular-nums text-brand-700" x-text="'$' + m.newPrice.toFixed(2)"></td>
+                        <td class="px-4 py-2.5 text-center">
+                          <span class="text-xs font-medium" :class="m.confidence === 100 ? 'text-brand-600' : 'text-amber-600'" x-text="m.confidence + '%'"></span>
+                        </td>
+                      </tr>
+                    </template>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div x-show="results.matches.length === 0" class="bg-white rounded-xl border border-gray-200 px-6 py-12 text-center">
+              <p class="text-sm text-gray-500">No price changes found. All matched products already have the correct prices.</p>
+            </div>
+          </div>
+        </template>
+      </div>
+    </main>
+  </div>
+
+  <script>
+  function pricingManager() {
+    return {
+      file: null,
+      fileName: '',
+      useMarkup: false,
+      uploading: false,
+      applying: false,
+      results: null,
+      toast: '',
+      toastType: 'success',
+
+      showToast(msg, type = 'success') {
+        this.toast = msg;
+        this.toastType = type;
+        setTimeout(() => this.toast = '', 3000);
+      },
+      handleFile(e) {
+        this.file = e.target.files[0];
+        this.fileName = this.file ? this.file.name : '';
+        this.results = null;
+      },
+      async uploadCSV() {
+        if (!this.file) return;
+        this.uploading = true;
+        this.results = null;
+        try {
+          const form = new FormData();
+          form.append('file', this.file);
+          form.append('use_markup', this.useMarkup);
+          const res = await fetch(API_BASE + '/api/upload-csv', { method: 'POST', body: form });
+          if (!res.ok) throw new Error(await res.text());
+          this.results = await res.json();
+        } catch (e) {
+          this.showToast('Upload failed: ' + e.message, 'error');
+        } finally {
+          this.uploading = false;
+        }
+      },
+      async applyAll() {
+        if (!this.results || !this.results.matches.length) return;
+        this.applying = true;
+        try {
+          const updates = this.results.matches.map(m => ({ itemId: m.itemId, netPrice: m.newPrice }));
+          const res = await fetch(API_BASE + '/api/bulk-update-prices', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ updates })
+          });
+          if (!res.ok) throw new Error(await res.text());
+          const data = await res.json();
+          this.showToast(`Updated ${data.updated} products` + (data.failed ? `, ${data.failed} failed` : ''));
+          this.results.totalChanged = 0;
+          this.results.matches = [];
+        } catch (e) {
+          this.showToast('Update failed: ' + e.message, 'error');
+        } finally {
+          this.applying = false;
+        }
+      }
+    };
+  }
+  </script>
+</body>
+</html>
