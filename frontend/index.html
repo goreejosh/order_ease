@@ -42,6 +42,7 @@
             <a href="/" class="px-3 py-2 rounded-md text-sm font-medium bg-brand-50 text-brand-700">Dashboard</a>
             <a href="/products.html" class="px-3 py-2 rounded-md text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900">Products</a>
             <a href="/pricing.html" class="px-3 py-2 rounded-md text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900">Bulk Pricing</a>
+            <a href="/barcodes.html" class="px-3 py-2 rounded-md text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900">Barcodes</a>
           </div>
         </div>
       </div>
@@ -125,6 +126,10 @@
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"/></svg>
               Bulk Price Update
             </a>
+            <a href="/barcodes.html" class="inline-flex items-center gap-2 rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-gray-900 shadow-sm border border-gray-300 hover:bg-gray-50 transition">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7h1m3 0h1m3 0h4M4 17h1m3 0h1m3 0h4M4 12h16"/></svg>
+              Barcode Generator
+            </a>
           </div>
         </div>
 
@@ -144,9 +149,7 @@
       stats: { total: 0, priced: 0, unpriced: 0, sizes: {}, groups: {} },
       async loadStats() {
         try {
-          const res = await fetch(API_BASE + '/api/stats');
-          if (!res.ok) throw new Error('Failed to load stats');
-          this.stats = await res.json();
+          this.stats = await apiFetchJson('/api/stats');
         } catch (e) {
           this.error = e.message;
         } finally {

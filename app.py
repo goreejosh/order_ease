@@ -49,6 +49,25 @@ def get_api() -> OrderEaseAPI:
     return _api
 
 
+def _validate_orderease_config() -> None:
+    base_url = (os.getenv("ORDEREASE_BASE_URL") or "").strip()
+    if not base_url:
+        raise OrderEaseAPIError("ORDEREASE_BASE_URL is not configured.")
+
+    has_auth = any(
+        (
+            os.getenv("ORDEREASE_INTEGRATION_KEY"),
+            os.getenv("ORDEREASE_BEARER_TOKEN"),
+            os.getenv("ORDEREASE_TOKEN"),
+            os.getenv("V2_API_Key"),
+        )
+    )
+    if not has_auth:
+        raise OrderEaseAPIError(
+            "OrderEase API credentials are not configured. Set V2_API_Key or explicit OrderEase auth env vars."
+        )
+
+
 # ---------------------------------------------------------------------------
 # App
 # ---------------------------------------------------------------------------
@@ -94,6 +113,7 @@ def _product_stats(products: List[Dict]) -> Dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 def _fetch_plants() -> List[Dict]:
+    _validate_orderease_config()
     api = get_api()
     raw = api._make_request("GET", "/api/SupplierInventory/GetAllSimple", unwrap_operation_result=True)
     return [p for p in (raw or []) if p.get("Category", {}).get("Name") == "Plants"]
@@ -103,8 +123,8 @@ def _fetch_plants() -> List[Dict]:
 async def api_stats():
     try:
         plants = _fetch_plants()
-    except OrderEaseAPIError:
-        plants = []
+    except OrderEaseAPIError as e:
+        raise HTTPException(500, f"Failed to fetch OrderEase products: {e}")
     return _product_stats(plants)
 
 
@@ -112,8 +132,8 @@ async def api_stats():
 async def api_products(q: str = "", group: str = "", size: str = "", pricing: str = ""):
     try:
         plants = _fetch_plants()
-    except OrderEaseAPIError:
-        plants = []
+    except OrderEaseAPIError as e:
+        raise HTTPException(500, f"Failed to fetch OrderEase products: {e}")
 
     all_groups = sorted(set(p.get("Comments") or "Uncategorized" for p in plants))
     all_sizes = sorted(set(p.get("OpenSizeDescription") or "Unknown" for p in plants))

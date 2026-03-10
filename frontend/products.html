@@ -42,6 +42,7 @@
             <a href="/" class="px-3 py-2 rounded-md text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900">Dashboard</a>
             <a href="/products.html" class="px-3 py-2 rounded-md text-sm font-medium bg-brand-50 text-brand-700">Products</a>
             <a href="/pricing.html" class="px-3 py-2 rounded-md text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900">Bulk Pricing</a>
+            <a href="/barcodes.html" class="px-3 py-2 rounded-md text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900">Barcodes</a>
           </div>
         </div>
       </div>
@@ -295,9 +296,7 @@
           if (this.filters.size) params.set('size', this.filters.size);
           if (this.filters.pricing) params.set('pricing', this.filters.pricing);
           const qs = params.toString();
-          const res = await fetch(API_BASE + '/api/products' + (qs ? '?' + qs : ''));
-          if (!res.ok) throw new Error('Failed to load products');
-          const data = await res.json();
+          const data = await apiFetchJson('/api/products' + (qs ? '?' + qs : ''));
           this.totalCount = data.total;
           this.allGroups = data.allGroups;
           this.allSizes = data.allSizes;
@@ -358,13 +357,11 @@
         this.applying = true;
         try {
           const updates = toUpdate.map(p => ({ itemId: p.itemId, netPrice: p._newPrice }));
-          const res = await fetch(API_BASE + '/api/bulk-update-prices', {
+          const data = await apiFetchJson('/api/bulk-update-prices', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ updates })
           });
-          if (!res.ok) throw new Error(await res.text());
-          const data = await res.json();
           toUpdate.forEach(p => { p.price = p._newPrice; p._editPrice = p._newPrice; });
           this.cancelPreview();
           this.products.forEach(p => p.selected = false);
@@ -379,12 +376,11 @@
       async saveInline(p) {
         p._saving = true;
         try {
-          const res = await fetch(API_BASE + '/api/update-price', {
+          await apiFetchJson('/api/update-price', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ itemId: p.itemId, netPrice: parseFloat(p._editPrice) })
           });
-          if (!res.ok) throw new Error('Failed');
           p.price = parseFloat(p._editPrice);
           p._editing = false;
           this.showToast('Price updated');
