@@ -34,21 +34,35 @@
       overflow: hidden;
       background: #fff;
     }
+    .thermal-label {
+      width: 3in;
+      min-width: 3in;
+      height: 2in;
+      min-height: 2in;
+      padding: 0.12in 0.15in;
+      gap: 4px;
+    }
     .label-card .lbl-company { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #111827; }
-    .label-card .lbl-plant   { font-size: 13px; font-weight: 600; color: #111827; text-align: center; }
-    .label-card .lbl-variety  { font-size: 11px; color: #4b5563; text-align: center; }
-    .label-card .lbl-size     { font-size: 10px; font-weight: 500; color: #6b7280; }
+    .label-card .lbl-plant   { font-size: 14px; font-weight: 700; color: #111827; text-align: center; line-height: 1.1; }
+    .label-card .lbl-variety  { font-size: 11px; color: #4b5563; text-align: center; line-height: 1.1; }
+    .label-card .lbl-size     { font-size: 11px; font-weight: 600; color: #6b7280; }
     .label-card .lbl-price    { font-size: 16px; font-weight: 800; color: #166534; }
-    .label-card .lbl-sku      { font-size: 9px; color: #9ca3af; font-family: monospace; }
+    .label-card .lbl-sku      { font-size: 10px; color: #6b7280; font-family: monospace; }
 
     @media print {
       body * { visibility: hidden !important; }
-      #print-sheet, #print-sheet * { visibility: visible !important; }
-      #print-sheet {
-        position: absolute; left: 0; top: 0; width: 100%;
-        padding: 0.25in;
+      #print-label, #print-label * { visibility: visible !important; }
+      #print-label {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 3in;
+        height: 2in;
+        margin: 0;
+        padding: 0;
       }
-      #print-sheet .label-card { border: 1px dashed #ccc; break-inside: avoid; }
+      #print-label .label-card { border: 0; }
+      @page { size: 3in 2in; margin: 0; }
     }
   </style>
   <script src="config.js"></script>
@@ -78,11 +92,13 @@
     </nav>
 
     <main class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 print:hidden">
-      <div x-data="labelBuilder()" x-init="init()" x-effect="refreshBarcodes()" class="fade-in">
+      <div x-data="labelBuilder()" x-init="init()"
+           x-effect="fields.sku; show.barcode; show.sku; barcodeFormat; refreshBarcodes()"
+           class="fade-in">
 
         <div class="mb-8">
           <h1 class="text-2xl font-bold text-gray-900">Label Generator</h1>
-          <p class="mt-1 text-sm text-gray-500">Create barcode labels with plant info, preview a sheet, then print or download.</p>
+          <p class="mt-1 text-sm text-gray-500">Create a single 3x2 thermal-roll label, then print or download it.</p>
         </div>
 
         <div class="grid grid-cols-1 gap-8 lg:grid-cols-3">
@@ -184,7 +200,7 @@
               </div>
             </div>
 
-            <!-- Barcode & Sheet Options -->
+            <!-- Barcode Options -->
             <div class="rounded-xl border border-gray-200 bg-white p-5">
               <h2 class="mb-3 text-sm font-semibold text-gray-900 uppercase tracking-wider">Options</h2>
               <div class="space-y-3">
@@ -202,17 +218,8 @@
                     <option value="CODE39">CODE39</option>
                   </select>
                 </div>
-                <div class="grid grid-cols-2 gap-3">
-                  <div>
-                    <label class="text-sm font-medium text-gray-700">Columns</label>
-                    <input type="number" min="1" max="6" x-model.number="sheetCols"
-                           class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-1.5 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
-                  </div>
-                  <div>
-                    <label class="text-sm font-medium text-gray-700">Rows</label>
-                    <input type="number" min="1" max="15" x-model.number="sheetRows"
-                           class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-1.5 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
-                  </div>
+                <div class="rounded-lg bg-gray-50 border border-gray-200 px-3 py-2 text-sm text-gray-600">
+                  Thermal label size: <span class="font-semibold text-gray-900">3&quot; x 2&quot;</span>
                 </div>
               </div>
             </div>
@@ -221,11 +228,24 @@
           <!-- ============ RIGHT: Preview ============ -->
           <div class="lg:col-span-2 space-y-6">
 
-            <!-- Single Label Preview -->
             <div class="rounded-xl border border-gray-200 bg-white p-5">
-              <h2 class="mb-3 text-sm font-semibold text-gray-900 uppercase tracking-wider">Label Preview</h2>
-              <div class="flex items-center justify-center rounded-lg bg-gray-50 border border-gray-200 p-8">
-                <div id="single-label-preview" class="label-card" style="width: 280px; min-height: 160px;">
+              <div class="flex items-center justify-between mb-3">
+                <h2 class="text-sm font-semibold text-gray-900 uppercase tracking-wider">Thermal Label Preview</h2>
+                <div class="flex gap-2">
+                  <button @click="downloadLabel()" :disabled="!hasContent"
+                          class="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                    Download PNG
+                  </button>
+                  <button @click="printLabel()" :disabled="!hasContent"
+                          class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                    Print Label
+                  </button>
+                </div>
+              </div>
+              <div class="flex items-center justify-center rounded-lg bg-gray-50 border border-gray-200 p-8 overflow-auto">
+                <div id="single-label-preview" class="label-card thermal-label">
                   <template x-if="show.company && fields.company">
                     <div class="lbl-company" x-text="fields.company"></div>
                   </template>
@@ -241,72 +261,14 @@
                   <template x-if="show.price && fields.price > 0">
                     <div class="lbl-price" x-text="'$' + parseFloat(fields.price).toFixed(2)"></div>
                   </template>
-                  <template x-if="show.barcode && fields.sku">
-                    <div class="mt-1">
-                      <canvas id="preview-barcode" width="200" height="50"></canvas>
-                    </div>
-                  </template>
-                  <template x-if="show.sku && fields.sku && !show.barcode">
+                  <div class="mt-1" x-show="show.barcode && fields.sku" x-cloak>
+                    <svg id="preview-barcode" class="overflow-visible"></svg>
+                  </div>
+                  <template x-if="show.sku && fields.sku">
                     <div class="lbl-sku" x-text="fields.sku"></div>
                   </template>
                   <template x-if="!(fields.plant || fields.sku || fields.company)">
                     <p class="text-sm text-gray-400 py-6">Fill in the fields to see your label.</p>
-                  </template>
-                </div>
-              </div>
-            </div>
-
-            <!-- Sheet Preview -->
-            <div class="rounded-xl border border-gray-200 bg-white p-5">
-              <div class="flex items-center justify-between mb-3">
-                <h2 class="text-sm font-semibold text-gray-900 uppercase tracking-wider">
-                  Sheet Preview
-                  <span class="text-xs text-gray-400 font-normal normal-case ml-1" x-text="sheetCols + ' × ' + sheetRows + ' = ' + (sheetCols * sheetRows) + ' labels'"></span>
-                </h2>
-                <div class="flex gap-2">
-                  <button @click="downloadSheet()" :disabled="!hasContent"
-                          class="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-                    Download PNG
-                  </button>
-                  <button @click="printSheet()" :disabled="!hasContent"
-                          class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
-                    Print Sheet
-                  </button>
-                </div>
-              </div>
-
-              <div class="overflow-auto rounded-lg border border-gray-200 bg-gray-50 p-4" style="max-height: 600px;">
-                <div id="sheet-container"
-                     class="inline-grid gap-0 mx-auto"
-                     :style="'grid-template-columns: repeat(' + sheetCols + ', 1fr)'">
-                  <template x-for="i in (sheetCols * sheetRows)" :key="i">
-                    <div class="label-card" style="width: 200px; min-height: 120px; font-size: 0.85em;">
-                      <template x-if="show.company && fields.company">
-                        <div class="lbl-company" x-text="fields.company"></div>
-                      </template>
-                      <template x-if="show.plant && fields.plant">
-                        <div class="lbl-plant" x-text="fields.plant"></div>
-                      </template>
-                      <template x-if="show.variety && fields.variety">
-                        <div class="lbl-variety" x-text="fields.variety"></div>
-                      </template>
-                      <template x-if="show.size && fields.size">
-                        <div class="lbl-size" x-text="fields.size"></div>
-                      </template>
-                      <template x-if="show.price && fields.price > 0">
-                        <div class="lbl-price" x-text="'$' + parseFloat(fields.price).toFixed(2)"></div>
-                      </template>
-                      <template x-if="show.barcode && fields.sku">
-                        <div class="mt-0.5">
-                          <canvas :id="'sheet-bc-' + i" width="160" height="40"></canvas>
-                        </div>
-                      </template>
-                      <template x-if="show.sku && fields.sku && !show.barcode">
-                        <div class="lbl-sku" x-text="fields.sku"></div>
-                      </template>
-                    </div>
                   </template>
                 </div>
               </div>
@@ -323,8 +285,8 @@
       </div>
     </main>
 
-    <!-- Hidden print sheet -->
-    <div id="print-sheet" class="hidden print:block">
+    <!-- Hidden print label -->
+    <div id="print-label" class="hidden print:block">
       <!-- Cloned at print time -->
     </div>
   </div>
@@ -350,8 +312,6 @@
         barcode: true,
       },
       barcodeFormat: 'CODE128',
-      sheetCols: 3,
-      sheetRows: 5,
 
       productQuery: '',
       filteredProducts: [],
@@ -433,15 +393,18 @@
       refreshBarcodes() {
         this.$nextTick(() => {
           this.renderBarcode('preview-barcode');
-          this.renderSheetBarcodes();
         });
       },
 
       renderBarcode(canvasId) {
-        if (typeof JsBarcode !== 'function' || !this.show.barcode || !this.fields.sku) return;
+        if (typeof JsBarcode !== 'function') return;
         try {
           const el = document.getElementById(canvasId);
           if (!el) return;
+          if (!this.show.barcode || !this.fields.sku) {
+            el.innerHTML = '';
+            return;
+          }
           JsBarcode(el, this.fields.sku.trim(), {
             format: this.barcodeFormat,
             width: 1.5,
@@ -450,47 +413,30 @@
             fontSize: 11,
             margin: 4,
           });
-        } catch {}
-      },
-
-      renderSheetBarcodes() {
-        if (typeof JsBarcode !== 'function' || !this.show.barcode || !this.fields.sku) return;
-        const total = this.sheetCols * this.sheetRows;
-        for (let i = 1; i <= total; i++) {
-          try {
-            const el = document.getElementById('sheet-bc-' + i);
-            if (!el) continue;
-            JsBarcode(el, this.fields.sku.trim(), {
-              format: this.barcodeFormat,
-              width: 1.2,
-              height: 28,
-              displayValue: this.show.sku,
-              fontSize: 9,
-              margin: 2,
-            });
-          } catch {}
+        } catch (e) {
+          console.error('Preview barcode render failed', e);
         }
       },
 
-      async downloadSheet() {
-        const container = document.getElementById('sheet-container');
+      async downloadLabel() {
+        const container = document.getElementById('single-label-preview');
         if (!container) return;
         try {
           const canvas = await html2canvas(container, { backgroundColor: '#ffffff', scale: 2 });
           const link = document.createElement('a');
           const name = (this.fields.plant || this.fields.sku || 'labels').replace(/[^a-zA-Z0-9-_]/g, '_');
-          link.download = 'labels-' + name + '.png';
+          link.download = 'label-' + name + '.png';
           link.href = canvas.toDataURL('image/png');
           link.click();
-          this.showToast('Sheet downloaded');
+          this.showToast('Label downloaded');
         } catch (e) {
           this.showToast('Download failed: ' + e.message, 'error');
         }
       },
 
-      printSheet() {
-        const container = document.getElementById('sheet-container');
-        const printArea = document.getElementById('print-sheet');
+      printLabel() {
+        const container = document.getElementById('single-label-preview');
+        const printArea = document.getElementById('print-label');
         if (!container || !printArea) return;
         printArea.innerHTML = container.outerHTML;
         window.print();
