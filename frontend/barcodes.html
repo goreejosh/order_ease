@@ -264,7 +264,7 @@
                   <div class="mt-1" x-show="show.barcode && fields.sku" x-cloak>
                     <svg id="preview-barcode" class="overflow-visible"></svg>
                   </div>
-                  <template x-if="show.sku && fields.sku">
+                  <template x-if="show.sku && fields.sku && !show.barcode">
                     <div class="lbl-sku" x-text="fields.sku"></div>
                   </template>
                   <template x-if="!(fields.plant || fields.sku || fields.company)">
